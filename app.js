@@ -1,100 +1,174 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EcoSuivi - Mon Tableau de Bord</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+let myChart = null;
 
-    <style>
-        /* Optimisations mobiles iPhone */
-        input, select, button {
-            font-size: 16px !important; /* Évite le zoom auto au clic sur iOS */
-        }
-        .canvas-container {
-            position: relative;
-            height: 60vh;
-            width: 100%;
-        }
-        @media (min-width: 768px) {
-            .canvas-container {
-                height: 400px;
+window.onload = () => {
+    document.getElementById('date').valueAsDate = new Date();
+    updateChart();
+};
+
+function ajouterReleve() {
+    const date = document.getElementById('date').value;
+    const type = document.getElementById('type').value;
+    const val = document.getElementById('index').value;
+    const index = parseFloat(val);
+
+    if (!date || isNaN(index)) return alert("Entrez une valeur valide");
+
+    let historique = JSON.parse(localStorage.getItem('consoHistorique')) || [];
+    historique.push({ id: Date.now(), date, type, index });
+    localStorage.setItem('consoHistorique', JSON.stringify(historique));
+    
+    document.getElementById('index').value = '';
+    updateChart();
+    alert("Ajouté !");
+}
+
+function ouvrirEdition() {
+    document.getElementById('pagePrincipale').classList.add('hidden');
+    document.getElementById('pageEdition').classList.remove('hidden');
+    genererInterfaceEdition();
+}
+
+function fermerEdition() {
+    document.getElementById('pageEdition').classList.add('hidden');
+    document.getElementById('pagePrincipale').classList.remove('hidden');
+    updateChart();
+}
+
+function genererInterfaceEdition() {
+    let historique = JSON.parse(localStorage.getItem('consoHistorique')) || [];
+    historique.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const conteneur = document.getElementById('listeModifiable');
+    conteneur.innerHTML = '';
+
+    historique.forEach(r => {
+        const div = document.createElement('div');
+        div.className = "bg-white p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 items-center border";
+        div.innerHTML = `
+            <input type="date" id="d-${r.id}" value="${r.date}" class="border-b p-1">
+            <select id="t-${r.id}" class="border-b p-1">
+                <option value="Electricité" ${r.type==='Electricité'?'selected':''}>Elec</option>
+                <option value="Eau" ${r.type==='Eau'?'selected':''}>Eau</option>
+                <option value="Gaz" ${r.type==='Gaz'?'selected':''}>Gaz</option>
+            </select>
+            <input type="number" id="i-${r.id}" value="${r.index}" class="border-b p-1">
+            <button onclick="validerModif(${r.id})" class="bg-green-500 text-white px-3 py-1 rounded">OK</button>
+            <button onclick="supprimerReleve(${r.id})" class="text-red-500">Supprimer</button>
+        `;
+        conteneur.appendChild(div);
+    });
+}
+
+function validerModif(id) {
+    let historique = JSON.parse(localStorage.getItem('consoHistorique')) || [];
+    const idx = historique.findIndex(r => r.id === id);
+    if(idx !== -1) {
+        historique[idx].date = document.getElementById(`d-${id}`).value;
+        historique[idx].type = document.getElementById(`t-${id}`).value;
+        historique[idx].index = parseFloat(document.getElementById(`i-${id}`).value);
+        localStorage.setItem('consoHistorique', JSON.stringify(historique));
+        fermerEdition();
+    }
+}
+
+function supprimerReleve(id) {
+    if(confirm("Supprimer ?")) {
+        let historique = JSON.parse(localStorage.getItem('consoHistorique')) || [];
+        historique = historique.filter(r => r.id !== id);
+        localStorage.setItem('consoHistorique', JSON.stringify(historique));
+        genererInterfaceEdition();
+    }
+}
+
+function resetData() {
+    if(confirm("Tout effacer ?")) {
+        localStorage.removeItem('consoHistorique');
+        location.reload();
+    }
+}
+
+function updateChart() {
+    let historique = JSON.parse(localStorage.getItem('consoHistorique')) || [];
+    if (historique.length === 0) {
+        if (myChart) myChart.destroy();
+        return;
+    }
+
+    historique.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const types = ['Electricité', 'Eau', 'Gaz'];
+    const colors = { 'Electricité': '#eab308', 'Eau': '#2563eb', 'Gaz': '#f97316' };
+
+    const datasets = types.map(t => {
+        const dataPoints = historique
+            .filter(r => r.type === t)
+            .map(r => ({
+                x: new Date(r.date),
+                y: r.index
+            }));
+
+        return {
+            label: t,
+            data: dataPoints,
+            borderColor: colors[t],
+            backgroundColor: colors[t],
+            yAxisID: t === 'Eau' ? 'yEau' : 'yE', // Eau à droite, Elec/Gaz à gauche
+            spanGaps: true,
+            tension: 0.2,
+            pointRadius: 5
+        };
+    });
+
+    if (myChart) myChart.destroy();
+    
+    const ctx = document.getElementById('consoChart').getContext('2d');
+    myChart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'time',
+                    time: { unit: 'day', displayFormats: { day: 'dd MMM' } }
+                },
+                yE: { 
+                    type: 'linear', 
+                    position: 'left', 
+                    title: { display: true, text: 'kWh (Elec/Gaz)' },
+                    // ASTUCE : On ne force pas le zéro pour que la courbe "zoom" sur vos valeurs
+                    beginAtZero: false, 
+                    grace: '5%' // Ajoute un petit espace de 5% en haut et en bas pour ne pas coller aux bords
+                },
+                yEau: { 
+                    type: 'linear', 
+                    position: 'right', 
+                    title: { display: true, text: 'm³ (Eau)' },
+                    grid: { drawOnChartArea: false },
+                    beginAtZero: false,
+                    grace: '5%'
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const pointActuel = context.raw;
+                            const dataSet = context.dataset.data;
+                            const idx = context.dataIndex;
+                            let label = `${context.dataset.label}: ${pointActuel.y}`;
+
+                            if (idx > 0) {
+                                const pointPrecedent = dataSet[idx - 1];
+                                const diffIndex = pointActuel.y - pointPrecedent.y;
+                                const diffJours = Math.ceil(Math.abs(pointActuel.x - pointPrecedent.x) / (1000 * 60 * 60 * 24)) || 1;
+                                label += ` (+${diffIndex.toFixed(1)} | ${(diffIndex/diffJours).toFixed(2)}/j)`;
+                            }
+                            return label;
+                        }
+                    }
+                }
             }
         }
-    </style>
-</head>
-<body class="bg-slate-50 min-h-screen font-sans text-slate-900">
-
-    <div id="pagePrincipale" class="max-w-4xl mx-auto p-4 space-y-6">
-        
-        <header class="flex justify-between items-center py-2">
-            <h1 class="text-2xl font-extrabold text-blue-700 tracking-tight">EcoSuivi</h1>
-            <button onclick="resetData()" class="text-[10px] bg-red-50 text-red-500 px-3 py-1 rounded-full border border-red-100 uppercase font-bold tracking-widest">
-                Réinitialiser
-            </button>
-        </header>
-
-        <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
-            <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Nouveau Relevé</h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="space-y-1">
-                    <label class="text-xs font-semibold ml-1 text-slate-500">Date</label>
-                    <input type="date" id="date" class="w-full bg-slate-50 border-none rounded-2xl p-3 focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div class="space-y-1">
-                    <label class="text-xs font-semibold ml-1 text-slate-500">Énergie</label>
-                    <select id="type" class="w-full bg-slate-50 border-none rounded-2xl p-3 focus:ring-2 focus:ring-blue-500">
-                        <option value="Electricité">Électricité (kWh)</option>
-                        <option value="Eau">Eau (m³)</option>
-                        <option value="Gaz">Gaz (kWh)</option>
-                    </select>
-                </div>
-                <div class="space-y-1">
-                    <label class="text-xs font-semibold ml-1 text-slate-500">Index compteur</label>
-                    <input type="number" id="index" step="any" inputmode="decimal" placeholder="00000" 
-                           class="w-full bg-slate-50 border-none rounded-2xl p-3 focus:ring-2 focus:ring-blue-500">
-                </div>
-                <button onclick="ajouterReleve()" class="bg-blue-600 text-white font-bold rounded-2xl py-3 px-6 shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all md:self-end">
-                    Enregistrer
-                </button>
-            </div>
-            
-            <div class="mt-6 pt-4 border-t border-slate-50">
-                <button onclick="ouvrirEdition()" class="flex items-center text-blue-600 font-semibold text-sm">
-                    <span class="mr-2 text-lg">📂</span> Voir l'historique et modifier
-                </button>
-            </div>
-        </div>
-
-        <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
-            <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">Évolution des consommations</h2>
-            <div class="canvas-container">
-                <canvas id="consoChart"></canvas>
-            </div>
-            <p class="text-[10px] text-slate-400 mt-4 text-center italic">
-                L'axe horizontal respecte la durée réelle entre vos relevés.
-            </p>
-        </div>
-    </div>
-
-    <div id="pageEdition" class="hidden fixed inset-0 bg-slate-50 z-50 overflow-y-auto p-4 pb-20">
-        <div class="max-w-2xl mx-auto">
-            <div class="flex justify-between items-center sticky top-0 bg-slate-50/90 backdrop-blur py-4 mb-6">
-                <h1 class="text-xl font-bold text-slate-800">Historique complet</h1>
-                <button onclick="fermerEdition()" class="bg-slate-900 text-white px-5 py-2 rounded-2xl font-bold text-sm shadow-xl">
-                    Fermer
-                </button>
-            </div>
-            
-            <div id="listeModifiable" class="space-y-4">
-                </div>
-        </div>
-    </div>
-
-    <script src="app.js"></script>
-
-</body>
-</html>
+    });
+}
