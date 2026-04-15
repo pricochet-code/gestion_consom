@@ -3,39 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoSuivi - Ma Conso</title>
+    <title>EcoSuivi Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-100 p-4">
-    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
-        <h1 class="text-2xl font-bold mb-4 text-center">Suivi Énergie</h1>
-        
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium">Type d'énergie</label>
-                <select id="type" class="w-full border p-2 rounded">
+<body class="bg-slate-100 p-4">
+    <div class="max-w-4xl mx-auto space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-sm">
+            <h1 class="text-xl font-bold mb-4">Nouveau Relevé</h1>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input type="date" id="date" class="border p-2 rounded">
+                <select id="type" class="border p-2 rounded">
                     <option value="Electricité">Électricité (kWh)</option>
                     <option value="Eau">Eau (m³)</option>
-                    <option value="Gaz">Gaz (m³)</option>
+                    <option value="Gaz">Gaz (kWh)</option>
                 </select>
+                <input type="number" id="index" class="border p-2 rounded" placeholder="Valeur compteur">
+                <button onclick="ajouterReleve()" class="bg-blue-600 text-white p-2 rounded">Ajouter</button>
             </div>
-            <div>
-                <label class="block text-sm font-medium">Index du compteur</label>
-                <input type="number" id="index" class="w-full border p-2 rounded" placeholder="Ex: 12450">
-            </div>
-            <button onclick="enregistrerDonnee()" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
-                Enregistrer le relevé
-            </button>
         </div>
 
-        <hr class="my-6">
-
-        <div id="resultats" class="space-y-4">
-            <h2 class="font-semibold text-lg text-gray-700">Dernières consommations :</h2>
-            <div id="listeConso"></div>
+        <div class="bg-white p-6 rounded-xl shadow-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">Analyse de consommation</h2>
+                <div class="flex gap-2 text-sm">
+                    <button onclick="updateChart('jours')" class="px-3 py-1 bg-gray-200 rounded">6 Jours</button>
+                    <button onclick="updateChart('semaines')" class="px-3 py-1 bg-gray-200 rounded">6 Semaines</button>
+                    <button onclick="updateChart('mois')" class="px-3 py-1 bg-gray-200 rounded">6 Mois</button>
+                </div>
+            </div>
+            <div class="h-80">
+                <canvas id="consoChart"></canvas>
+            </div>
         </div>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>
