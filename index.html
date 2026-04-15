@@ -19,22 +19,34 @@
                     <option value="Gaz">Gaz (kWh)</option>
                 </select>
                 <input type="number" id="index" class="border p-2 rounded" placeholder="Valeur compteur">
-                <button onclick="ajouterReleve()" class="bg-blue-600 text-white p-2 rounded">Ajouter</button>
+                <button onclick="ajouterReleve()" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Ajouter</button>
+            </div>
+            <div class="flex gap-4 mt-4">
+                <button onclick="toggleHistorique()" class="text-blue-600 text-sm font-medium underline">Afficher l'historique / Modifier</button>
+                <button onclick="resetData()" class="text-red-600 text-sm font-medium underline">Remettre à zéro (Tout effacer)</button>
             </div>
         </div>
 
         <div class="bg-white p-6 rounded-xl shadow-sm">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold">Analyse de consommation</h2>
-                <div class="flex gap-2 text-sm">
-                    <button onclick="updateChart('jours')" class="px-3 py-1 bg-gray-200 rounded">6 Jours</button>
-                    <button onclick="updateChart('semaines')" class="px-3 py-1 bg-gray-200 rounded">6 Semaines</button>
-                    <button onclick="updateChart('mois')" class="px-3 py-1 bg-gray-200 rounded">6 Mois</button>
-                </div>
-            </div>
+            <h2 class="text-lg font-semibold mb-4">Analyse de consommation</h2>
             <div class="h-80">
                 <canvas id="consoChart"></canvas>
             </div>
+        </div>
+
+        <div id="sectionHistorique" class="hidden bg-white p-6 rounded-xl shadow-sm overflow-x-auto">
+            <h2 class="text-lg font-semibold mb-4 text-red-600">Historique des saisies</h2>
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b">
+                        <th class="p-2">Date</th>
+                        <th class="p-2">Type</th>
+                        <th class="p-2">Index</th>
+                        <th class="p-2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableHistorique"></tbody>
+            </table>
         </div>
     </div>
     <script src="app.js"></script>
